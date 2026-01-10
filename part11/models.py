@@ -255,7 +255,7 @@ class Searcher:
             # Searching for the word in all sonnets
             results = self.index.search_for(word)
 
-            # ToDo 3: Combine the search results from the search_for method of the index. From ToDo 2 you know
+            # ToDo 4: Combine the search results from the search_for method of the index. From ToDo 2 you know
             #         that results is a dictionary with the key-value pairs of int-SearchResult, where the key is the
             #         document ID (the sonnet ID) and the value is the SearchResult for the current word in this sonnet.
             #         Re-think the combine logic. You need to check the keys of combined_results and results to find
