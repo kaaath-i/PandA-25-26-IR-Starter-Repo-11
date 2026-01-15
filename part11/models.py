@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Dict, Any, Tuple, Callable
+from typing import List, Dict, Any, Tuple
 
 
 class Sonnet:
@@ -8,7 +8,15 @@ class Sonnet:
         self.lines = sonnet_data["lines"]
 
         # ToDo 1: Make sure the sonnet has an attribute id that contains the number of the Sonnet as an int
-        #self.id =
+        self.id = self.extract_id(self.title)
+
+    @staticmethod
+    def extract_id(title: str) -> int:
+        parts = title.split()
+        if len(parts) >= 2 and parts[0] == "Sonnet":
+            number_str = parts[1].rstrip(':')
+            return int(number_str)
+        return 0
 
     @staticmethod
     def find_spans(text: str, pattern: str):
@@ -68,7 +76,14 @@ class Index:
         for sonnet in sonnets:
             # ToDo 2: Implement logic of adding tokens to the index. Use the pre-defined methods tokenize and
             #  _add_token to do so. Index the title and the lines of the sonnet.
-            pass # Remove the pass keyword and replace it with your code
+                title_tokens = self.tokenize(sonnet.title)
+                for token, position in title_tokens:
+                    self._add_token(sonnet.id, token, None, position)
+
+                for line_no, line_text in enumerate(sonnet.lines):
+                    line_tokens = self.tokenize(line_text)
+                    for token, position in line_tokens:
+                        self._add_token(sonnet.id, token, line_no, position)
 
     @staticmethod
     def tokenize(text):
@@ -189,7 +204,16 @@ class Index:
                     sonnet = self.sonnets[doc_id]
 
                     # ToDo 3: Based on the posting create the corresponding SearchResult instance
-                    result = None # Replace with code to create the correct SearchResult instance
+                    if posting.line_no is None:
+                        span = (posting.position, posting.position + len(token))
+                        result = SearchResult(sonnet.title, [span], [], 1)
+                    else:
+                        line_no = posting.line_no
+                        line_text = sonnet.lines[line_no]
+                        span = (posting.position, posting.position + len(token))
+
+                        line_match = LineMatch(line_no + 1, line_text, [span])
+                        result = SearchResult(sonnet.title, [], [line_match], 1)
 
                     # At this point result contains the SearchResult corresponding to the posting - ready to be added
                     # to the results dictionary.
@@ -263,7 +287,22 @@ class Searcher:
             #         need to merge them independent of whether the current search mode is "AND" or "OR". But the "OR"
             #         mode will always contains all search results.
 
-            # Add your code here...
+            if not combined_results:
+                combined_results = results
+            else:
+                if search_mode == "AND":
+                    merged_results = {}
+                    for doc_id in combined_results.keys():
+                        if doc_id in results:
+                            merged_results[doc_id] = combined_results[doc_id].combine_with(results[doc_id])
+                    combined_results = merged_results
+
+                elif search_mode == "OR":
+                    for doc_id, result in results.items():
+                        if doc_id in combined_results:
+                            combined_results[doc_id] = combined_results[doc_id].combine_with(result)
+                        else:
+                            combined_results[doc_id] = result
 
             # At this point combined_results contains a dictionary with the sonnet ID as key and the search result for
             # this sonnet. Just like the result you receive from the index, but combined for all words
@@ -316,17 +355,17 @@ class SearchResult:
         out.append(text[i:])
         return "".join(out)
 
-    def print(self, idx, highlight_mode: str | None, total_docs):
+    def print(self, idx, highlight: bool, total_docs, highlight_mode: str = "DEFAULT"):
         title_line = (
             self.ansi_highlight(self.title, self.title_spans, highlight_mode)
-            if highlight_mode
+            if highlight
             else self.title
         )
         print(f"\n[{idx}/{total_docs}] {title_line}")
         for lm in self.line_matches:
             line_out = (
                 self.ansi_highlight(lm.text, lm.spans, highlight_mode)
-                if highlight_mode
+                if highlight
                 else lm.text
             )
             print(f"  [{lm.line_no:2}] {line_out}")

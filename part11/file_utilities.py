@@ -87,7 +87,53 @@ class Configuration:
         except OSError:
             print(f"Writing config.json failed.")
 
+class ConfigMode:
+    def __init__(self, command_name, valid_values, config_attr, transform_func, value_transform):
+        self.command_name = command_name
+        self.valid_values = valid_values
+        self.config_attr = config_attr
+        self.transform_func = transform_func
+        self.value_transform = value_transform
 
+    def get_mode(self, raw, config):
+        if raw.startswith(self.command_name):
+            parts = raw.split()
+            if len(parts) == 2:
+                value = self.transform_func(parts[1])
+                if value in self.valid_values:
+                    final_value = self.value_transform(value)
+                    setattr(config, self.config_attr, final_value)
+                    print(f"{self.command_name} set to {final_value}")
+                    config.save()
+                    return True
+
+            print(f"Usage: {self.command_name} {' | '.join(self.valid_values)}")
+            return True
+        return False
+
+highlight_cmd = ConfigMode(
+    command_name=":highlight",
+    valid_values=("on", "off"),
+    config_attr="highlight",
+    transform_func=str.lower,
+    value_transform=lambda v: v == "on"
+    )
+
+search_mode_cmd = ConfigMode(
+    command_name=":search-mode",
+    valid_values=("AND", "OR"),
+    config_attr="search_mode",
+    transform_func=str.upper,
+    value_transform=lambda v: v
+    )
+
+hl_mode_cmd = ConfigMode(
+    command_name=":hl-mode",
+    valid_values=("DEFAULT", "GREEN"),
+    config_attr="hl_mode",
+    transform_func=str.upper,
+    value_transform=lambda v: v
+    )
 
 def module_relative_path(name: str) -> str:
     """Return absolute path for a file next to this module."""
